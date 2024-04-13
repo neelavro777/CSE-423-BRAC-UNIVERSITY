@@ -4,7 +4,12 @@ from OpenGL.GLU import *
 import random
 
 W_Width, W_Height = 500,500
-
+rectangle_block = {
+    "x1": 150,
+    "y1": 150,
+    'width': 200,
+    'height': 100
+}
 def convert_coordinate(x,y):
     global W_Width, W_Height
     a = x 
@@ -166,6 +171,8 @@ def mouseListener(button, state, x, y):
             pass
 
 
+
+
 def iterate():
     glViewport(0, 0, 500, 500)
     glMatrixMode(GL_PROJECTION)
@@ -174,16 +181,29 @@ def iterate():
     glMatrixMode (GL_MODELVIEW)
     glLoadIdentity()
 
+def draw_rectangle_block(rectangle_block):
+    x1, y1 = rectangle_block['x1'], rectangle_block['y1']
+    x2, y2 = x1 + rectangle_block['width'], y1
+    x3, y3 = x2, y1 + rectangle_block['height']
+    x4, y4 = x1, y1 + rectangle_block['height']
+    eight_way_symmetry(x1, y1, x2, y2)
+    eight_way_symmetry(x2, y2, x3, y3)
+    eight_way_symmetry(x3, y3, x4, y4)
+    eight_way_symmetry(x4, y4, x1, y1)
+
+
 def draw_line(x1, y1, x2, y2, color):
     eight_way_symmetry(x1, y1, x2, y2, color)
 
 def showScreen():
+    global rectangle_block
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glLoadIdentity()
     iterate()
-    eight_way_symmetry(0, 0, 100, 100)
-    midpoint_circle(100, (1, 1, 0), (250, 250))
-    draw_line(0, 0, 500, 500, (1, 0, 0))
+    # eight_way_symmetry(0, 0, 100, 100)
+    # midpoint_circle(100, (1, 1, 0), (250, 250))
+    # draw_line(0, 0, 500, 500, (1, 0, 0))
+    draw_rectangle_block(rectangle_block)
     glutSwapBuffers()
 
 glutInit()
