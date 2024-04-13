@@ -4,12 +4,16 @@ from OpenGL.GLU import *
 import random
 
 W_Width, W_Height = 500,500
+
 rectangle_block = {
-    "x1": 150,
-    "y1": 150,
-    'width': 200,
-    'height': 100
+    "x1": 10,
+    "y1": 10,
+    'width': 20,
+    'height': 10
 }
+
+rectangle_shape_dict = {}
+
 def convert_coordinate(x,y):
     global W_Width, W_Height
     a = x 
@@ -181,15 +185,34 @@ def iterate():
     glMatrixMode (GL_MODELVIEW)
     glLoadIdentity()
 
-def draw_rectangle_block(rectangle_block):
+def draw_large_rectangle():
+    global rectangle_shape_dict, rectangle_block
+    block_width = 10
+    block_height = 10
+    large_rectangle_width = 50
+    large_rectangle_height = 20
+
+    for i in range(large_rectangle_width):
+        for j in range(large_rectangle_height):
+            rectangle_block = {
+                'x1': i * block_width,
+                'y1': j * block_height,
+                'width': block_width,
+                'height': block_height
+            }
+            # rectangle_shape_dict[]
+            color = [random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]
+            draw_rectangle_block(rectangle_block,color)
+
+def draw_rectangle_block(rectangle_block,color):
     x1, y1 = rectangle_block['x1'], rectangle_block['y1']
     x2, y2 = x1 + rectangle_block['width'], y1
     x3, y3 = x2, y1 + rectangle_block['height']
     x4, y4 = x1, y1 + rectangle_block['height']
-    eight_way_symmetry(x1, y1, x2, y2)
-    eight_way_symmetry(x2, y2, x3, y3)
-    eight_way_symmetry(x3, y3, x4, y4)
-    eight_way_symmetry(x4, y4, x1, y1)
+    eight_way_symmetry(x1, y1, x2, y2, color)
+    eight_way_symmetry(x2, y2, x3, y3, color)
+    eight_way_symmetry(x3, y3, x4, y4, color)
+    eight_way_symmetry(x4, y4, x1, y1, color)
 
 
 def draw_line(x1, y1, x2, y2, color):
@@ -203,7 +226,8 @@ def showScreen():
     # eight_way_symmetry(0, 0, 100, 100)
     # midpoint_circle(100, (1, 1, 0), (250, 250))
     # draw_line(0, 0, 500, 500, (1, 0, 0))
-    draw_rectangle_block(rectangle_block)
+    # draw_rectangle_block(rectangle_block)
+    draw_large_rectangle()
     glutSwapBuffers()
 
 glutInit()
@@ -213,7 +237,7 @@ glutInitWindowSize(500, 500)
 glutInitWindowPosition(0, 0)
 wind = glutCreateWindow(b"OpenGL Coding Practice")
 glutDisplayFunc(showScreen)
-glutIdleFunc(animate)
+# glutIdleFunc(animate)
 glutSpecialFunc(specialKeyListener)
 glutMouseFunc(mouseListener)
 glutKeyboardFunc(keyboardListener)
