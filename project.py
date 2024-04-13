@@ -12,7 +12,31 @@ rectangle_block = {
     'height': 10
 }
 
-rectangle_shape_dict = {}
+
+dx_bat_speed = 30
+dx_bat = {
+    "x1": 0,
+    "y1": 0,
+    'width': 70,
+    'height': 15
+}
+
+dx_ball_center = (250, 30)
+dx_ball_radius = 5
+dx_ball_speed = (5, 5)
+
+pattern = []
+powerups = ['increase_size', 'decrease_size', 'fast_ball', 'slow_ball', "shooter", "unstoppable"]
+for y in range(480, 421, -20):
+    for x in range(0, 501, 50):
+        rand_num = random.randint(0, 9)
+        if rand_num == 0:
+            powerup = random.choice(powerups)
+            print(f"Assigned Powerup {powerup}")
+        else:
+            powerup = None
+        pattern.append([x, y, powerup])
+
 
 def convert_coordinate(x,y):
     global W_Width, W_Height
@@ -136,8 +160,29 @@ def Circlepoints(x, y, color, center):
     draw_points(y+center[0], -x+center[1], color)
     draw_points(-y+center[0], -x+center[1], color)
 
+def has_collided(box1, box2):
+    return (box1['x'] < box2['x'] + box2['width'] and
+            box1['x'] + box1['width'] > box2['x'] and
+            box1['y'] < box2['y'] + box2['height'] and
+            box1['y'] + box1['height'] > box2['y'])
+
 def animate():
-    pass
+    global dx_ball_center, dx_ball_speed, dx_ball_radius
+
+    if dx_ball_center[1] - dx_ball_radius <= 0:
+        print("Game Over")
+    if dx_ball_center[0] + dx_ball_radius > 500 or dx_ball_center[0] - dx_ball_radius < 0:
+        dx_ball_speed = (-dx_ball_speed[0], dx_ball_speed[1])
+    elif dx_ball_center[1] + 5 > 500 or dx_ball_center[1] - 5 < 0:
+        dx_ball_speed = (dx_ball_speed[0], -dx_ball_speed[1])
+
+    ball_box = {"x":dx_ball_center[0] - dx_ball_radius, "y": dx_ball_center[1] - dx_ball_radius, "width": 2*dx_ball_radius, "height": 2*dx_ball_radius}
+    bat_box = {"x":dx_bat['x1'], "y": dx_bat['y1'] + 5, "width": dx_bat['width'], "height": dx_bat['height']}
+
+    if has_collided(ball_box, bat_box):
+        dx_ball_speed = (dx_ball_speed[0], -dx_ball_speed[1])
+
+    dx_ball_center = (dx_ball_center[0] + dx_ball_speed[0], dx_ball_center[1] + dx_ball_speed[1])
     glutPostRedisplay()
   
 
@@ -153,18 +198,17 @@ def keyboardListener(key, x, y):
     glutPostRedisplay()
 
 def specialKeyListener(key, x, y):
+    global dx_bat_speed
     if key==GLUT_KEY_RIGHT:
+        if dx_bat['x1'] + dx_bat['width'] < 500:
+            dx_bat['x1'] += dx_bat_speed
         print("Right arrow pressed")
 
     elif key==GLUT_KEY_LEFT:
+        if dx_bat['x1'] > 0:
+            dx_bat['x1'] -= dx_bat_speed
         print("Left arrow pressed")
 
-
-    # print(catcher_info[0])
-#     elif key == GLUT_KEY_UP:
-
-
-#     elif key == GLUT_KEY_DOWN:
 
 
     glutPostRedisplay()
@@ -204,6 +248,28 @@ def draw_large_rectangle():
             color = [random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]
             draw_rectangle_block(rectangle_block,color)
 
+
+# def generate_pattern():
+#     arr = []
+
+#     powerups = ['increase_size', 'decrease_size', 'fast_ball', 'slow_ball', "shooter", "unstoppable"]
+
+#     for y in range(480, 421, -20):
+#         for x in range(0, 501, 50):
+#             rand_num = random.randint(0, 9)
+
+#             if rand_num == 0:
+#                 powerup = random.choice(powerups)
+#                 print(f"Assigned Powerup {powerup}")
+#             else:
+#                 powerup = None
+
+#             arr.append([x, y, powerup])
+
+#     return arr
+
+
+
 def draw_rectangle_block(rectangle_block,color):
     x1, y1 = rectangle_block['x1'], rectangle_block['y1']
     x2, y2 = x1 + rectangle_block['width'], y1
@@ -219,15 +285,26 @@ def draw_line(x1, y1, x2, y2, color):
     eight_way_symmetry(x1, y1, x2, y2, color)
 
 def showScreen():
-    global rectangle_block
+    global rectangle_block, dx_bat, pattern, dx_ball_center
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glLoadIdentity()
     iterate()
-    # eight_way_symmetry(0, 0, 100, 100)
-    # midpoint_circle(100, (1, 1, 0), (250, 250))
-    # draw_line(0, 0, 500, 500, (1, 0, 0))
-    # draw_rectangle_block(rectangle_block)
-    draw_large_rectangle()
+
+    # draw blocks
+    for coordinate in pattern:
+        draw_rectangle_block({
+        "x1": coordinate[0],
+        "y1": coordinate[1],
+        'width': 50,
+        'height': 20
+    }, [1,1,1])
+        
+    # draw bat
+    draw_rectangle_block(dx_bat, [1,1,1])
+
+    # draw ball
+    midpoint_circle(dx_ball_radius, [1,1,1], dx_ball_center)
+
     glutSwapBuffers()
 
 glutInit()
@@ -237,7 +314,7 @@ glutInitWindowSize(500, 500)
 glutInitWindowPosition(0, 0)
 wind = glutCreateWindow(b"OpenGL Coding Practice")
 glutDisplayFunc(showScreen)
-# glutIdleFunc(animate)
+glutIdleFunc(animate)
 glutSpecialFunc(specialKeyListener)
 glutMouseFunc(mouseListener)
 glutKeyboardFunc(keyboardListener)
