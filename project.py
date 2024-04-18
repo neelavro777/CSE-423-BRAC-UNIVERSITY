@@ -3,12 +3,14 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 import random
 import time
+import math
+
 
 previous_time = time.time()
 W_Width, W_Height = 500,500
 
 dx_stages_dictionary = {}
-current_stage = 1
+current_stage = 3
 
 dx_pattern_dictionary = {}
 powerups = ['increase_size', 'decrease_size', 'fast_ball', 'slow_ball', "shooter", "unstoppable"]
@@ -44,6 +46,35 @@ for i in range(pyramid_height):
 
 dx_stages_dictionary[2] = dx_pattern_dictionary
     
+
+# Constants for the dual-arch pattern
+base_center_x = 250  # Center X coordinate for the base of the arches
+base_y_top = 220     # Y coordinate for the top arch base
+base_y_bottom = 280  # Y coordinate for the bottom arch base
+arch_height = 5      # Number of layers in each arch
+
+# Stage 3: Circular pattern using dual arches
+dx_pattern_dictionary = {}
+
+# Construct the top arch
+for i in range(arch_height):
+    y = base_y_top - i * 20  # Decreasing Y coordinate for the top arch
+    for x in range(base_center_x - i * 50, base_center_x + i * 50 + 1, 50):
+        rand_num = random.randint(0, int(1/solid_prob))
+        block_type = "solid" if rand_num == 0 else "hollow"
+        dx_pattern_dictionary[(x, y)] = [block_type, None]
+
+# Construct the bottom arch
+for i in range(arch_height):
+    y = base_y_bottom + i * 20  # Increasing Y coordinate for the bottom arch
+    for x in range(base_center_x - i * 50, base_center_x + i * 50 + 1, 50):
+        rand_num = random.randint(0, int(1/solid_prob))
+        block_type = "solid" if rand_num == 0 else "hollow"
+        dx_pattern_dictionary[(x, y)] = [block_type, None]
+
+dx_stages_dictionary[3] = dx_pattern_dictionary
+
+
 
 
 dx_bat_speed = 30
