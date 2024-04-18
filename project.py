@@ -9,6 +9,19 @@ import math
 previous_time = time.time()
 W_Width, W_Height = 500,500
 
+dx_bat_speed = 30
+dx_bat = {
+    "x1": 0,
+    "y1": 0,
+    'width': 100,
+    'height': 15
+}
+
+dx_ball_center = (250, 30)
+dx_ball_radius = 5
+dx_ball_speed = (5, 5)
+dx_ball_deviation = 5
+
 dx_stages_dictionary = {}
 current_stage = 1
 
@@ -18,6 +31,40 @@ solid_prob = 0.2
 powerup_prob = 0.5
 
 
+powerup_info_dict = {
+    "increase_size": {
+        "color": [1, 0, 0],
+        "effect": "bat_size",
+        "value": 20
+    },
+    "decrease_size": {
+        "color": [0, 1, 0],
+        "effect": "bat_size",
+        "value": -20
+    },
+    "fast_ball": {
+        "color": [0, 0, 1],
+        "effect": "ball_speed",
+        "value": 5
+    },
+    "slow_ball": {
+        "color": [1, 1, 0],
+        "effect": "ball_speed",
+        "value": -5
+    },
+    "shooter": {
+        "color": [1, 0, 1],
+        "effect": "shooter",
+        "value": True
+    },
+    "unstoppable": {
+        "color": [0, 1, 1],
+        "effect": "unstoppable",
+        "value": True
+    }
+
+}
+current_poweruplist = []
 
 def assign_powerup(probability):
     global powerups, dx_pattern_dictionary
@@ -65,18 +112,6 @@ dx_stages_dictionary[2] = dx_pattern_dictionary
 
 
 
-dx_bat_speed = 30
-dx_bat = {
-    "x1": 0,
-    "y1": 0,
-    'width': 100,
-    'height': 15
-}
-
-dx_ball_center = (250, 30)
-dx_ball_radius = 5
-dx_ball_speed = (5, 5)
-dx_ball_deviation = 5
 
 
 
@@ -212,7 +247,7 @@ def has_collided(box1, box2):
 
 
 # Constants
-FIXED_TIME_STEP = 1.0 / 60
+FIXED_TIME_STEP = 1.0 / 30
 
 # Variables to keep track of time
 previous_time = time.time()
@@ -232,6 +267,43 @@ def animate():
         accumulator -= FIXED_TIME_STEP
 
     glutPostRedisplay()
+
+
+def draw_powerup(powerup, x, y):
+    global powerup_info_dict, current_poweruplist
+    powerup_info = powerup_info_dict[powerup]
+    current_poweruplist.append([x, y, powerup_info['color'], powerup_info])
+
+
+def draw_powerup_falling():
+    global current_poweruplist, dx_bat, dx_ball_speed, powerup_info_dict
+    fall_speed = 1  
+    bat_box = {"x": dx_bat['x1'], "y": dx_bat['y1'], "width": dx_bat['width'], "height": dx_bat['height']}
+    for i in range(len(current_poweruplist)):
+        # Update the y-coordinate in the power-up list to simulate falling
+        powerup_info = current_poweruplist[i][3]
+        powerup_box = {"x": current_poweruplist[i][0]-7, "y": current_poweruplist[i][1]- 7, "width": 14, "height": 14}
+        current_poweruplist[i][1] -= fall_speed
+        if current_poweruplist[i][1] < 0:
+            current_poweruplist.pop(i)
+            break
+        elif has_collided(powerup_box, bat_box):
+            if powerup_info['effect'] == "bat_size":
+                dx_bat['width'] += powerup_info['value']
+                print("Bat size increased")
+            elif powerup_info['effect'] == "ball_speed":
+                dx_ball_speed = (dx_ball_speed[0] + powerup_info['value'], dx_ball_speed[1] + powerup_info['value'])
+                print("Ball speed increased")
+            elif powerup_info['effect'] == "shooter":
+                pass
+            elif powerup_info['effect'] == "unstoppable":
+                pass
+            current_poweruplist.pop(i)
+            break
+        print(powerup_info)
+
+    
+
 
 def update_game_state():
     global dx_ball_center, dx_ball_speed, dx_ball_radius, dx_bat, dx_ball_deviation, current_stage, dx_stages_dictionary
@@ -255,6 +327,9 @@ def update_game_state():
         if has_collided(block_box, {"x": dx_ball_center[0] - dx_ball_radius, "y": dx_ball_center[1] - dx_ball_radius, "width": 2*dx_ball_radius, "height": 2*dx_ball_radius}):
             if block == "hollow":
                 dx_pattern_dictionary.pop(coordinate)
+                if powerup:
+                    draw_powerup(powerup, coordinate[0], coordinate[1])
+
 
             elif block == "solid":
                 dx_pattern_dictionary[coordinate] = ["hollow", None]
@@ -262,7 +337,7 @@ def update_game_state():
             dx_ball_speed = (dx_ball_speed[0], -dx_ball_speed[1])
             break
 
-        
+    draw_powerup_falling()
     # Check for stage transition
     if len(dx_pattern_dictionary) == 0:  # All blocks cleared
         next_stage = current_stage + 1
@@ -293,6 +368,7 @@ def update_game_state():
 
     # Update ball position
     dx_ball_center = (dx_ball_center[0] + dx_ball_speed[0], dx_ball_center[1] + dx_ball_speed[1])
+
     glutPostRedisplay()
 
 def keyboardListener(key, x, y):
@@ -391,6 +467,9 @@ def showScreen():
         elif block_type == "solid":
             draw_rectangle_block_filled({"x1": coordinate[0], "y1": coordinate[1], 'width': 50, 'height': 20}, [1, 1, 1])
 
+    for powerup in current_poweruplist:
+        x, y, color, powerup_info = powerup
+        midpoint_circle(7, color, (x, y))
     # draw bat
     draw_rectangle_block(dx_bat, [1,1,1])
 
