@@ -257,6 +257,8 @@ def update_game_state():
     # Check for stage transition
     if len(dx_pattern_dictionary) == 0:  # All blocks cleared
         next_stage = current_stage + 1
+        if current_stage + 1 <= len(dx_stages_dictionary.keys()):
+            current_stage += 1
         if next_stage in dx_stages_dictionary:
             load_stage(next_stage)
         else:
