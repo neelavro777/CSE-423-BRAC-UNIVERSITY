@@ -5,7 +5,9 @@ import random
 import time
 import math
 
-
+freeze=False
+lives = 3
+game_over=False
 previous_time = time.time()
 W_Width, W_Height = 500,500
 
@@ -254,8 +256,8 @@ previous_time = time.time()
 accumulator = 0.0
 
 def animate():
-    global dx_ball_center, dx_ball_speed, dx_ball_radius, dx_bat, dx_ball_deviation, previous_time, accumulator
 
+    global dx_ball_center, dx_ball_speed, dx_ball_radius, dx_bat, dx_ball_deviation, previous_time, accumulator, freeze, game_over
     current_time = time.time()
     elapsed = current_time - previous_time
     previous_time = current_time
@@ -263,8 +265,10 @@ def animate():
 
     # Process the accumulated time in fixed steps
     while accumulator >= FIXED_TIME_STEP:
-        update_game_state()  # This function will contain your current animate logic
+        if not freeze and not game_over:
+            update_game_state()  # Update game state
         accumulator -= FIXED_TIME_STEP
+
 
     glutPostRedisplay()
 
@@ -306,13 +310,21 @@ def draw_powerup_falling():
 
 
 def update_game_state():
-    global dx_ball_center, dx_ball_speed, dx_ball_radius, dx_bat, dx_ball_deviation, current_stage, dx_stages_dictionary
+    global dx_ball_center, dx_ball_speed, dx_ball_radius, dx_bat, dx_ball_deviation, current_stage, dx_stages_dictionary, lives, game_over, dx_
 
     dx_pattern_dictionary = dx_stages_dictionary[current_stage]
 
     # Boundary collision checks
-    if dx_ball_center[1] - dx_ball_radius <= 0:
-        print("Game Over")
+    if dx_ball_center[1] - dx_ball_radius <= 5:
+        lives -= 1
+        print("Lives remaining:", lives)
+        if lives <= 0:
+            print("Game Over")
+            game_over = True
+        else:
+            # Reset the ball to its initial position
+            dx_ball_center = (250, 30)
+            dx_ball_speed = (5, 5)
     if dx_ball_center[0] + dx_ball_radius > W_Width or dx_ball_center[0] - dx_ball_radius < 0:
         dx_ball_speed = (-dx_ball_speed[0], dx_ball_speed[1])
     if dx_ball_center[1] + dx_ball_radius > W_Height or dx_ball_center[1] - dx_ball_radius < 0:
@@ -349,6 +361,8 @@ def update_game_state():
         else:
             print("Congratulations! All stages completed!")
 
+    
+
     # Collision detection with bat
     ball_box = {"x": dx_ball_center[0] - dx_ball_radius, "y": dx_ball_center[1] - dx_ball_radius, "width": 2*dx_ball_radius, "height": 2*dx_ball_radius}
     bat_box = {"x": dx_bat['x1'], "y": dx_bat['y1'], "width": dx_bat['width'], "height": dx_bat['height']}
@@ -383,27 +397,55 @@ def keyboardListener(key, x, y):
     glutPostRedisplay()
 
 def specialKeyListener(key, x, y):
-    global dx_bat_speed
-    if key==GLUT_KEY_RIGHT:
-        if dx_bat['x1'] + dx_bat['width'] < 500:
-            dx_bat['x1'] += dx_bat_speed
-        print("Right arrow pressed")
+    global dx_bat_speed , freeze, game_over
+    if freeze==False and game_over==False:
+        if key==GLUT_KEY_RIGHT:
+            if dx_bat['x1'] + dx_bat['width'] < 500:
+                dx_bat['x1'] += dx_bat_speed
+            print("Right arrow pressed")
 
-    elif key==GLUT_KEY_LEFT:
-        if dx_bat['x1'] > 0:
-            dx_bat['x1'] -= dx_bat_speed
-        print("Left arrow pressed")
+        elif key==GLUT_KEY_LEFT:
+            if dx_bat['x1'] > 0:
+                dx_bat['x1'] -= dx_bat_speed
+            print("Left arrow pressed")
 
 
 
     glutPostRedisplay()
 
+def reset():
+    pass
+
 def mouseListener(button, state, x, y):
-    if button==GLUT_LEFT_BUTTON:
-        if state == GLUT_DOWN:
-            pass
+    global freeze  
+    if button == GLUT_LEFT_BUTTON:
+        if (state == GLUT_DOWN):  
+            c_X, c_y = convert_coordinate(x, y)
+            if c_X <= 50 and (c_y >= 450 and c_y <= 500):
+                reset()
+                print('Starting Over!')
+            elif c_X >= 440 and (c_y >= 450 and c_y <= 500):
+                print('Goodbye! Score:')
+                glutLeaveMainLoop()
+            elif (c_X >= 230 and c_X <= 270) and (c_y >= 450 and c_y <= 500):
+                print(freeze)
 
+                freeze = not freeze
+                #print(freeze)
+                print(freeze)
 
+    glutPostRedisplay()
+
+def pause_icon(x1,y1,x2,y2,color):
+    global freeze, game_over
+    if freeze==True:
+        #print(x1,y1,x2,y2,s,c)
+        draw_line(x1,y1,x2,y2,color)
+        draw_line(x1,y1,x2+40,y2-25,color)
+        draw_line(x1,y1+50,x2+40,y2-25,color)
+    else:   
+        draw_line(x1, y1, x2, y2,color) 
+        draw_line(x1+20,y1,x2+20,y2,color)   
 
 
 def iterate():
@@ -475,6 +517,20 @@ def showScreen():
 
     # draw ball
     midpoint_circle(dx_ball_radius, [1,1,1], dx_ball_center)
+
+    # STOP button
+
+    draw_line(440, 450, 490, 500,[1,0,0])
+    draw_line(490, 450, 440, 500,[1,0,0])
+
+    # Pause button
+    pause_icon(240, 450, 240, 500, [1, 0.75, 0])
+
+
+    # Reset button
+    draw_line(10, 475, 50, 475, [0, 0.98, 0.78])
+    draw_line(10, 475, 40, 500, [0, 0.98, 0.78])
+    draw_line(10, 475, 40, 450, [0, 0.98, 0.78])
 
     glutSwapBuffers()
 
