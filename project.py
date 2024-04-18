@@ -24,6 +24,7 @@ dx_bat = {
 dx_ball_center = (250, 30)
 dx_ball_radius = 5
 dx_ball_speed = (5, 5)
+dx_ball_deviation = 5
 
 pattern = []
 powerups = ['increase_size', 'decrease_size', 'fast_ball', 'slow_ball', "shooter", "unstoppable"]
@@ -167,23 +168,37 @@ def has_collided(box1, box2):
             box1['y'] + box1['height'] > box2['y'])
 
 def animate():
-    global dx_ball_center, dx_ball_speed, dx_ball_radius
+    global dx_ball_center, dx_ball_speed, dx_ball_radius, dx_bat, dx_ball_deviation
 
+    # Boundary collision checks
     if dx_ball_center[1] - dx_ball_radius <= 0:
         print("Game Over")
-    if dx_ball_center[0] + dx_ball_radius > 500 or dx_ball_center[0] - dx_ball_radius < 0:
+    if dx_ball_center[0] + dx_ball_radius > W_Width or dx_ball_center[0] - dx_ball_radius < 0:
         dx_ball_speed = (-dx_ball_speed[0], dx_ball_speed[1])
-    elif dx_ball_center[1] + 5 > 500 or dx_ball_center[1] - 5 < 0:
+    if dx_ball_center[1] + dx_ball_radius > W_Height or dx_ball_center[1] - dx_ball_radius < 0:
         dx_ball_speed = (dx_ball_speed[0], -dx_ball_speed[1])
 
-    ball_box = {"x":dx_ball_center[0] - dx_ball_radius, "y": dx_ball_center[1] - dx_ball_radius, "width": 2*dx_ball_radius, "height": 2*dx_ball_radius}
-    bat_box = {"x":dx_bat['x1'], "y": dx_bat['y1'] + 5, "width": dx_bat['width'], "height": dx_bat['height']}
+    # Collision detection with bat
+    ball_box = {"x": dx_ball_center[0] - dx_ball_radius, "y": dx_ball_center[1] - dx_ball_radius, "width": 2*dx_ball_radius, "height": 2*dx_ball_radius}
+    bat_box = {"x": dx_bat['x1'], "y": dx_bat['y1'], "width": dx_bat['width'], "height": dx_bat['height']}
 
     if has_collided(ball_box, bat_box):
-        dx_ball_speed = (dx_ball_speed[0], -dx_ball_speed[1])
+        # Calculate where the ball hit the bat
+        hit_point = dx_ball_center[0]
+        bat_center = dx_bat['x1'] + dx_bat['width'] / 2
+        offset = hit_point - bat_center
+        
+        # Modify the angle based on where it hit the bat
+        influence = offset / (dx_bat['width'] / 2)  # Normalizing the offset
+        new_dx = influence*dx_ball_deviation  # Adjust speed change factor as necessary
 
+        # Reflecting the vertical speed and adjusting horizontal speed
+        dx_ball_speed = (new_dx, -dx_ball_speed[1])
+
+    # Update ball position
     dx_ball_center = (dx_ball_center[0] + dx_ball_speed[0], dx_ball_center[1] + dx_ball_speed[1])
     glutPostRedisplay()
+
   
 
 def keyboardListener(key, x, y):
