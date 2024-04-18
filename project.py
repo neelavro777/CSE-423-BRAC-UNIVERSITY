@@ -2,22 +2,55 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 import random
+import time
 
+previous_time = time.time()
 W_Width, W_Height = 500,500
 
-rectangle_block = {
-    "x1": 10,
-    "y1": 10,
-    'width': 20,
-    'height': 10
-}
+dx_stages_dictionary = {}
+current_stage = 1
+
+dx_pattern_dictionary = {}
+powerups = ['increase_size', 'decrease_size', 'fast_ball', 'slow_ball', "shooter", "unstoppable"]
+solid_prob = 0.2
+
+
+# Define all stages
+
+# Stage 1:
+for y in range(380, 321, -20):
+    for x in range(100, 351, 50):
+        rand_num = random.randint(0, int(1/solid_prob))
+        if rand_num == 0:
+            dx_pattern_dictionary[(x, y)] = ["solid", None]
+        else:
+            dx_pattern_dictionary[(x, y)] = ["hollow", None]
+dx_stages_dictionary[1] = dx_pattern_dictionary
+
+
+# Stage 2:
+dx_pattern_dictionary = {}
+pyramid_top = (225, 380)
+pyramid_height = 5
+for i in range(pyramid_height):
+    y = 380 - i*20
+    for x in range(pyramid_top[0] - i*50, pyramid_top[0] + i*50 + 1, 50):
+        rand_num = random.randint(0, int(1/solid_prob))
+        if rand_num == 0:
+            dx_pattern_dictionary[(x, y)] = ["solid", None]
+        else:
+            dx_pattern_dictionary[(x, y)] = ["hollow", None]
+        
+
+dx_stages_dictionary[2] = dx_pattern_dictionary
+    
 
 
 dx_bat_speed = 30
 dx_bat = {
     "x1": 0,
     "y1": 0,
-    'width': 70,
+    'width': 100,
     'height': 15
 }
 
@@ -26,17 +59,17 @@ dx_ball_radius = 5
 dx_ball_speed = (5, 5)
 dx_ball_deviation = 5
 
-pattern = []
-powerups = ['increase_size', 'decrease_size', 'fast_ball', 'slow_ball', "shooter", "unstoppable"]
-for y in range(480, 421, -20):
-    for x in range(0, 501, 50):
-        rand_num = random.randint(0, 9)
-        if rand_num == 0:
-            powerup = random.choice(powerups)
-            print(f"Assigned Powerup {powerup}")
-        else:
-            powerup = None
-        pattern.append([x, y, powerup])
+
+def assign_powerup(probability):
+    global powerups, dx_pattern_dictionary
+    rand_num = random.randint(0, int(1/probability))
+    if rand_num == 0:
+        powerup = random.choice(powerups)
+        print(f"Assigned Powerup {powerup}")
+        # dx_pattern_dictionary[(x, y)][1] = powerup
+    else:
+        powerup = None
+    return powerup
 
 
 def convert_coordinate(x,y):
@@ -167,8 +200,34 @@ def has_collided(box1, box2):
             box1['y'] < box2['y'] + box2['height'] and
             box1['y'] + box1['height'] > box2['y'])
 
+
+
+# Constants
+FIXED_TIME_STEP = 1.0 / 60
+
+# Variables to keep track of time
+previous_time = time.time()
+accumulator = 0.0
+
 def animate():
-    global dx_ball_center, dx_ball_speed, dx_ball_radius, dx_bat, dx_ball_deviation
+    global dx_ball_center, dx_ball_speed, dx_ball_radius, dx_bat, dx_ball_deviation, previous_time, accumulator
+
+    current_time = time.time()
+    elapsed = current_time - previous_time
+    previous_time = current_time
+    accumulator += elapsed
+
+    # Process the accumulated time in fixed steps
+    while accumulator >= FIXED_TIME_STEP:
+        update_game_state()  # This function will contain your current animate logic
+        accumulator -= FIXED_TIME_STEP
+
+    glutPostRedisplay()
+
+def update_game_state():
+    global dx_ball_center, dx_ball_speed, dx_ball_radius, dx_bat, dx_ball_deviation, current_stage, dx_stages_dictionary
+
+    dx_pattern_dictionary = dx_stages_dictionary[current_stage]
 
     # Boundary collision checks
     if dx_ball_center[1] - dx_ball_radius <= 0:
@@ -177,6 +236,31 @@ def animate():
         dx_ball_speed = (-dx_ball_speed[0], dx_ball_speed[1])
     if dx_ball_center[1] + dx_ball_radius > W_Height or dx_ball_center[1] - dx_ball_radius < 0:
         dx_ball_speed = (dx_ball_speed[0], -dx_ball_speed[1])
+
+    # Collision detection with block
+    for coordinate, block_powerup in dx_pattern_dictionary.items():
+        block, powerup = block_powerup
+        
+        block_box = {"x": coordinate[0], "y": coordinate[1], "width": 50, "height": 20}
+    
+        if has_collided(block_box, {"x": dx_ball_center[0] - dx_ball_radius, "y": dx_ball_center[1] - dx_ball_radius, "width": 2*dx_ball_radius, "height": 2*dx_ball_radius}):
+            if block == "hollow":
+                dx_pattern_dictionary.pop(coordinate)
+
+            elif block == "solid":
+                dx_pattern_dictionary[coordinate] = ["hollow", None]
+
+            dx_ball_speed = (dx_ball_speed[0], -dx_ball_speed[1])
+            break
+
+        
+    # Check for stage transition
+    if len(dx_pattern_dictionary) == 0:  # All blocks cleared
+        next_stage = current_stage + 1
+        if next_stage in dx_stages_dictionary:
+            load_stage(next_stage)
+        else:
+            print("Congratulations! All stages completed!")
 
     # Collision detection with bat
     ball_box = {"x": dx_ball_center[0] - dx_ball_radius, "y": dx_ball_center[1] - dx_ball_radius, "width": 2*dx_ball_radius, "height": 2*dx_ball_radius}
@@ -198,8 +282,6 @@ def animate():
     # Update ball position
     dx_ball_center = (dx_ball_center[0] + dx_ball_speed[0], dx_ball_center[1] + dx_ball_speed[1])
     glutPostRedisplay()
-
-  
 
 def keyboardListener(key, x, y):
     if key==b' ':
@@ -244,44 +326,6 @@ def iterate():
     glMatrixMode (GL_MODELVIEW)
     glLoadIdentity()
 
-def draw_large_rectangle():
-    global rectangle_shape_dict, rectangle_block
-    block_width = 10
-    block_height = 10
-    large_rectangle_width = 50
-    large_rectangle_height = 20
-
-    for i in range(large_rectangle_width):
-        for j in range(large_rectangle_height):
-            rectangle_block = {
-                'x1': i * block_width,
-                'y1': j * block_height,
-                'width': block_width,
-                'height': block_height
-            }
-            # rectangle_shape_dict[]
-            color = [random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]
-            draw_rectangle_block(rectangle_block,color)
-
-
-# def generate_pattern():
-#     arr = []
-
-#     powerups = ['increase_size', 'decrease_size', 'fast_ball', 'slow_ball', "shooter", "unstoppable"]
-
-#     for y in range(480, 421, -20):
-#         for x in range(0, 501, 50):
-#             rand_num = random.randint(0, 9)
-
-#             if rand_num == 0:
-#                 powerup = random.choice(powerups)
-#                 print(f"Assigned Powerup {powerup}")
-#             else:
-#                 powerup = None
-
-#             arr.append([x, y, powerup])
-
-#     return arr
 
 
 
@@ -295,25 +339,44 @@ def draw_rectangle_block(rectangle_block,color):
     eight_way_symmetry(x3, y3, x4, y4, color)
     eight_way_symmetry(x4, y4, x1, y1, color)
 
+def draw_rectangle_block_filled(rectangle_block, color):
+    x1, y1 = rectangle_block['x1'], rectangle_block['y1']
+    width = rectangle_block['width']
+    height = rectangle_block['height']
+
+    for y in range(y1, y1 + height):
+        for x in range(x1, x1 + width):
+            draw_points(x, y, color)
+
 
 def draw_line(x1, y1, x2, y2, color):
     eight_way_symmetry(x1, y1, x2, y2, color)
 
+def load_stage(stage_number):
+    global dx_pattern_dictionary, dx_stages_dictionary, current_stage
+    if stage_number in dx_stages_dictionary:
+        dx_pattern_dictionary = dx_stages_dictionary[stage_number]
+        current_stage = stage_number
+    else:
+        print("Stage not found:", stage_number)
+
+
+
 def showScreen():
-    global rectangle_block, dx_bat, pattern, dx_ball_center
+    global rectangle_block, dx_bat, dx_ball_center, dx_pattern_dictionary, current_stage
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glLoadIdentity()
     iterate()
+    load_stage(current_stage)
 
-    # draw blocks
-    for coordinate in pattern:
-        draw_rectangle_block({
-        "x1": coordinate[0],
-        "y1": coordinate[1],
-        'width': 50,
-        'height': 20
-    }, [1,1,1])
-        
+    # Draw all blocks for the current stage
+    for coordinate, block_info in dx_pattern_dictionary.items():
+        block_type, _ = block_info
+        if block_type == "hollow":
+            draw_rectangle_block({"x1": coordinate[0], "y1": coordinate[1], 'width': 50, 'height': 20}, [1,1,1])
+        elif block_type == "solid":
+            draw_rectangle_block_filled({"x1": coordinate[0], "y1": coordinate[1], 'width': 50, 'height': 20}, [1, 1, 1])
+
     # draw bat
     draw_rectangle_block(dx_bat, [1,1,1])
 
