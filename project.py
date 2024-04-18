@@ -10,12 +10,25 @@ previous_time = time.time()
 W_Width, W_Height = 500,500
 
 dx_stages_dictionary = {}
-current_stage = 3
+current_stage = 1
 
 dx_pattern_dictionary = {}
 powerups = ['increase_size', 'decrease_size', 'fast_ball', 'slow_ball', "shooter", "unstoppable"]
 solid_prob = 0.2
+powerup_prob = 0.5
 
+
+
+def assign_powerup(probability):
+    global powerups, dx_pattern_dictionary
+    rand_num = random.randint(0, int(1/probability))
+    if rand_num == 0:
+        powerup = random.choice(powerups)
+        print(f"Assigned Powerup {powerup}")
+        # dx_pattern_dictionary[(x, y)][1] = powerup
+    else:
+        powerup = None
+    return powerup
 
 # Define all stages
 
@@ -23,10 +36,11 @@ solid_prob = 0.2
 for y in range(380, 321, -20):
     for x in range(100, 351, 50):
         rand_num = random.randint(0, int(1/solid_prob))
+        
         if rand_num == 0:
-            dx_pattern_dictionary[(x, y)] = ["solid", None]
+            dx_pattern_dictionary[(x, y)] = ["solid", assign_powerup(powerup_prob)]
         else:
-            dx_pattern_dictionary[(x, y)] = ["hollow", None]
+            dx_pattern_dictionary[(x, y)] = ["hollow", assign_powerup(powerup_prob)]
 dx_stages_dictionary[1] = dx_pattern_dictionary
 
 
@@ -39,40 +53,14 @@ for i in range(pyramid_height):
     for x in range(pyramid_top[0] - i*50, pyramid_top[0] + i*50 + 1, 50):
         rand_num = random.randint(0, int(1/solid_prob))
         if rand_num == 0:
-            dx_pattern_dictionary[(x, y)] = ["solid", None]
+            dx_pattern_dictionary[(x, y)] = ["solid", assign_powerup(powerup_prob)]
         else:
-            dx_pattern_dictionary[(x, y)] = ["hollow", None]
+            dx_pattern_dictionary[(x, y)] = ["hollow", assign_powerup(powerup_prob)]
         
 
 dx_stages_dictionary[2] = dx_pattern_dictionary
     
 
-# Constants for the dual-arch pattern
-base_center_x = 250  # Center X coordinate for the base of the arches
-base_y_top = 220     # Y coordinate for the top arch base
-base_y_bottom = 280  # Y coordinate for the bottom arch base
-arch_height = 5      # Number of layers in each arch
-
-# Stage 3: Circular pattern using dual arches
-dx_pattern_dictionary = {}
-
-# Construct the top arch
-for i in range(arch_height):
-    y = base_y_top - i * 20  # Decreasing Y coordinate for the top arch
-    for x in range(base_center_x - i * 50, base_center_x + i * 50 + 1, 50):
-        rand_num = random.randint(0, int(1/solid_prob))
-        block_type = "solid" if rand_num == 0 else "hollow"
-        dx_pattern_dictionary[(x, y)] = [block_type, None]
-
-# Construct the bottom arch
-for i in range(arch_height):
-    y = base_y_bottom + i * 20  # Increasing Y coordinate for the bottom arch
-    for x in range(base_center_x - i * 50, base_center_x + i * 50 + 1, 50):
-        rand_num = random.randint(0, int(1/solid_prob))
-        block_type = "solid" if rand_num == 0 else "hollow"
-        dx_pattern_dictionary[(x, y)] = [block_type, None]
-
-dx_stages_dictionary[3] = dx_pattern_dictionary
 
 
 
@@ -91,16 +79,6 @@ dx_ball_speed = (5, 5)
 dx_ball_deviation = 5
 
 
-def assign_powerup(probability):
-    global powerups, dx_pattern_dictionary
-    rand_num = random.randint(0, int(1/probability))
-    if rand_num == 0:
-        powerup = random.choice(powerups)
-        print(f"Assigned Powerup {powerup}")
-        # dx_pattern_dictionary[(x, y)][1] = powerup
-    else:
-        powerup = None
-    return powerup
 
 
 def convert_coordinate(x,y):
@@ -292,6 +270,7 @@ def update_game_state():
             current_stage += 1
         if next_stage in dx_stages_dictionary:
             load_stage(next_stage)
+            dx_ball_center = (250, 30)
         else:
             print("Congratulations! All stages completed!")
 
@@ -404,7 +383,9 @@ def showScreen():
 
     # Draw all blocks for the current stage
     for coordinate, block_info in dx_pattern_dictionary.items():
-        block_type, _ = block_info
+        block_type, powerup = block_info
+        if powerup:
+            draw_rectangle_block_filled({"x1": coordinate[0], "y1": coordinate[1], 'width': 50, 'height': 20}, [0,0.5,0.75])
         if block_type == "hollow":
             draw_rectangle_block({"x1": coordinate[0], "y1": coordinate[1], 'width': 50, 'height': 20}, [1,1,1])
         elif block_type == "solid":
