@@ -300,7 +300,7 @@ def draw_powerup_falling():
                 pass
             current_poweruplist.pop(i)
             break
-        print(powerup_info)
+        # print(powerup_info)
 
     
 
