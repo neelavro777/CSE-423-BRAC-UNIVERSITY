@@ -126,8 +126,8 @@ powerup_deactivate_dict={'magnet': 0}
 
 
 def powerup_deactivate(powerup):
-    global dx_bat, dx_ball_speed, fire_ball, magnetic_bat
-    if powerup == 0:
+    global dx_bat, dx_ball_speed, fire_ball, magnetic_bat,powerup_deactivate_dict
+    if powerup == powerup_deactivate_dict['magnet']:
         magnetic_bat = False
         print("Magnetic Bat Deactivated")
 
