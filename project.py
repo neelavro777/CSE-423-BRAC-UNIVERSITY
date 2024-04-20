@@ -3,14 +3,16 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 import random
 import time
-import math
 
+fps = 30
 freeze=False
 lives = 3
 game_over=False
+game_win = False
 fire_ball = False
 magnetic_bat=False
 shooter_powerup=False
+unstoppable = False
 
 previous_time = time.time()
 W_Width, W_Height = 500,500
@@ -22,26 +24,28 @@ dx_bat = {
     'width': 100,
     'height': 15
 }
+dx_bat_color = [1, 1, 1]
 
 # dx_ball_center = (250, 30)
 dx_ball_radius = 5
 dx_ball_center = (dx_bat['x1'] + dx_bat['width'] // 2, dx_bat['y1'] + dx_bat['height'] + dx_ball_radius)
 dx_ball_speed = (5, 5)
+dx_ball_color = [1, 1, 1]
+
 dx_ball_deviation = 5
 bullets = []
 dx_stages_dictionary = {}
 current_stage = 1
 
 dx_pattern_dictionary = {}
-# powerups = ['increase_size', 'decrease_size', 'fast_ball', 'slow_ball', "shooter", "unstoppable",'magnet']
-powerups=['shooter']
+powerups=["increase_ball_speed", "decrease_ball_speed", "increase_bat_size", "decrease_bat_size", "shooter", "unstoppable", "magnet"]
 solid_prob = 0.2
-powerup_prob = 1
+powerup_prob = 0.2
 
 
 powerup_info_dict = {
     "increase_bat_size": {
-        "color": [1, 0, 0],
+        "color": [1, 0, 1],
         "effect": "increase_bat_size",
         "value": 50
     },
@@ -50,23 +54,23 @@ powerup_info_dict = {
         "effect": "decrease_bat_size",
         "value": -30
     },
-    "fast_ball": {
+    "increase_ball_speed": {
         "color": [0, 0, 1],
-        "effect": "ball_speed",
-        "value": 5
+        "effect": "increase_ball_speed",
+        "value": 1.5
     },
-    "slow_ball": {
+    "decrease_ball_speed": {
         "color": [1, 1, 0],
-        "effect": "ball_speed",
-        "value": -5
+        "effect": "decrease_ball_speed",
+        "value": 3
     },
     "shooter": {
-        "color": [1, 0, 1],
+        "color": [1, 0, 0],
         "effect": "shooter",
         "value": True
     },
     "unstoppable": {
-        "color": [0, 1, 1],
+        "color": [1, 0.5, 0],
         "effect": "unstoppable",
         "value": True
     },
@@ -89,8 +93,6 @@ def assign_powerup(probability):
     else:
         powerup = None
     return powerup
-
-# Define all stages
 
 # Stage 1:
 for y in range(380, 321, -20):
@@ -116,30 +118,67 @@ for i in range(pyramid_height):
             dx_pattern_dictionary[(x, y)] = ["solid", assign_powerup(powerup_prob)]
         else:
             dx_pattern_dictionary[(x, y)] = ["hollow", assign_powerup(powerup_prob)]
-        
-
 dx_stages_dictionary[2] = dx_pattern_dictionary
-    
 
 
-powerup_deactivate_dict={'magnet': 0, 'shooter': 1, 'increase_bat_size': 3, 'decrease_bat_size': 4}
+# Stage 3:
+dx_pattern_dictionary = {}
+top = (225, 380)
+bottom = (225, 260)
+radius = 3
+for i in range(radius+1):
+    y = 380 - i*20
+    for x in range(pyramid_top[0] - i*50, pyramid_top[0] + i*50 + 1, 50):
+        rand_num = random.randint(0, int(1/solid_prob))
+        if rand_num == 0:
+            dx_pattern_dictionary[(x, y)] = ["solid", assign_powerup(powerup_prob)]
+        else:
+            dx_pattern_dictionary[(x, y)] = ["hollow", assign_powerup(powerup_prob)]
+
+for i in range(radius, -1, -1):
+    y = 240 + i*20
+    for x in range(pyramid_top[0] - i*50, pyramid_top[0] + i*50 + 1, 50):
+        rand_num = random.randint(0, int(1/solid_prob))
+        if rand_num == 0:
+            dx_pattern_dictionary[(x, y)] = ["solid", assign_powerup(powerup_prob)]
+        else:
+            dx_pattern_dictionary[(x, y)] = ["hollow", assign_powerup(powerup_prob)]        
+
+dx_stages_dictionary[3] = dx_pattern_dictionary
+
+
+powerup_deactivate_dict={'magnet': 0, 'shooter': 1, 'unstoppable': 2, 'increase_bat_size': 3, 'decrease_bat_size': 4, "increase_ball_speed": 5, "decrease_ball_speed": 6}
 
 
 
 def powerup_deactivate(powerup):
-    global dx_bat, dx_ball_speed, fire_ball, magnetic_bat,powerup_deactivate_dict, shooter_powerup
+    global dx_bat, dx_ball_speed, fire_ball, magnetic_bat,powerup_deactivate_dict, shooter_powerup, dx_ball_color, dx_bat_color, unstoppable
     if powerup == powerup_deactivate_dict['magnet']:
         magnetic_bat = False
+        dx_bat_color = [1, 1, 1]
         print("Magnetic Bat Deactivated")
     elif powerup == powerup_deactivate_dict['shooter']:
         shooter_powerup = False
+        dx_bat_color = [1, 1, 1]
         print("Shooter Powerup Deactivated")
     elif powerup == powerup_deactivate_dict['increase_bat_size']:
         dx_bat['width'] = 100
         print("Bat size reset")
     elif powerup == powerup_deactivate_dict['decrease_bat_size']:
         dx_bat['width'] = 100
-        print("Bat size reset")    
+        print("Bat size reset")
+    elif powerup == powerup_deactivate_dict['increase_ball_speed']:
+        val =  powerup_info_dict['increase_ball_speed']['value']
+        dx_ball_speed = [dx_ball_speed[0]/val , dx_ball_speed[1]/val]
+        print("Ball Speed Reset")
+    elif powerup == powerup_deactivate_dict['decrease_ball_speed']:
+        val =  powerup_info_dict['increase_ball_speed']['value']
+        dx_ball_speed = [dx_ball_speed[0]*val , dx_ball_speed[1]*val]
+        print("Ball Speed Reset")
+    elif powerup == powerup_deactivate_dict['unstoppable']:
+        unstoppable = False
+        dx_ball_color = [1, 1, 1]
+        print("Ball is stoppable now")    
 
 
 
@@ -272,11 +311,8 @@ def has_collided(box1, box2):
             box1['y'] + box1['height'] > box2['y'])
 
 
-
-# Constants
-FIXED_TIME_STEP = 1.0 / 30
-
-# Variables to keep track of time
+# FPS
+FIXED_TIME_STEP = 1.0 / fps
 previous_time = time.time()
 accumulator = 0.0
 
@@ -288,9 +324,8 @@ def animate():
     previous_time = current_time
     accumulator += elapsed
 
-    # Process the accumulated time in fixed steps
     while accumulator >= FIXED_TIME_STEP:
-        if not freeze and not game_over:
+        if not freeze and not game_over and not game_win:
                 update_game_state()
                 
         accumulator -= FIXED_TIME_STEP
@@ -306,11 +341,10 @@ def draw_powerup(powerup, x, y):
 
 
 def draw_powerup_falling():
-    global current_poweruplist, dx_bat, dx_ball_speed, powerup_info_dict, fire_ball, magnetic_bat, powerup_deactivate_dict,shooter_powerup  
-    fall_speed = 1  
+    global current_poweruplist, dx_bat, dx_ball_speed, powerup_info_dict, fire_ball, magnetic_bat, powerup_deactivate_dict,shooter_powerup, dx_bat_color, dx_ball_color, unstoppable  
+    fall_speed = 3 
     bat_box = {"x": dx_bat['x1'], "y": dx_bat['y1'], "width": dx_bat['width'], "height": dx_bat['height']}
     for i in range(len(current_poweruplist)):
-        # Update the y-coordinate in the power-up list to simulate falling
         powerup_info = current_poweruplist[i][3]
         powerup_box = {"x": current_poweruplist[i][0]-7, "y": current_poweruplist[i][1]- 7, "width": 14, "height": 14}
         current_poweruplist[i][1] -= fall_speed
@@ -323,25 +357,38 @@ def draw_powerup_falling():
                 print("Bat size increased")
                 glutTimerFunc(10000, powerup_deactivate, powerup_deactivate_dict['increase_bat_size'])
 
-            elif powerup_info['effect'] == "ball_speed":
-                dx_ball_speed = (dx_ball_speed[0] + powerup_info['value'], dx_ball_speed[1] + powerup_info['value'])
-                print("Ball speed increased")
-
             elif powerup_info['effect'] == "decrease_bat_size":
                 dx_bat['width'] += powerup_info['value']
                 print("Bat size decreased")
-                glutTimerFunc(10000, powerup_deactivate, powerup_deactivate_dict['decrease_bat_size'])  
+                glutTimerFunc(10000, powerup_deactivate, powerup_deactivate_dict['decrease_bat_size']) 
+
+
+            elif powerup_info['effect'] == "increase_ball_speed":
+                dx_ball_speed = (dx_ball_speed[0] * powerup_info['value'], dx_ball_speed[1] * powerup_info['value'])
+                print("Ball speed increased")
+                glutTimerFunc(10000, powerup_deactivate, powerup_deactivate_dict['increase_ball_speed'])
+
+            
+            elif powerup_info['effect'] == "decrease_ball_speed":
+                dx_ball_speed = (dx_ball_speed[0] / powerup_info['value'], dx_ball_speed[1] / powerup_info['value'])
+                print("Ball speed decreased")
+                glutTimerFunc(10000, powerup_deactivate, powerup_deactivate_dict['decrease_ball_speed'])
+
+
 
             elif powerup_info['effect'] == "shooter":
-                # draw_bullets()
                 shooter_powerup = True
+                dx_bat_color = [1, 0, 0]
                 glutTimerFunc(10000, powerup_deactivate, powerup_deactivate_dict['shooter'])
 
             elif powerup_info['effect'] == "unstoppable":
-                pass
+                unstoppable = True
+                dx_ball_color = [1, 0.5, 0]
+                glutTimerFunc(10000, powerup_deactivate, powerup_deactivate_dict['unstoppable'])
 
             elif powerup_info['effect'] == "magnet":
                 magnetic_bat = True
+                dx_bat_color = [0, 0, 1]
                 glutTimerFunc(10000, powerup_deactivate, powerup_deactivate_dict['magnet'])
 
                 
@@ -354,8 +401,8 @@ def draw_powerup_falling():
 def fire_bullet():
     global bullets, dx_bat
     # Create two separate bullet instances
-    bullet1 = {'radius': 2, 'center': [dx_bat['x1'], dx_bat['y1'] + dx_bat['height']], 'speed': 1, 'color': [1, 0, 0]}
-    bullet2 = {'radius': 2, 'center': [dx_bat['x1'] + dx_bat['width'], dx_bat['y1'] + dx_bat['height']], 'speed': 1, 'color': [1, 0, 0]}
+    bullet1 = {'radius': 3, 'center': [dx_bat['x1'], dx_bat['y1'] + dx_bat['height']], 'speed': 5, 'color': [1, 0, 0]}
+    bullet2 = {'radius': 3, 'center': [dx_bat['x1'] + dx_bat['width'], dx_bat['y1'] + dx_bat['height']], 'speed': 5, 'color': [1, 0, 0]}
     bullets.append(bullet1)
     bullets.append(bullet2)
 
@@ -386,7 +433,7 @@ def check_bullet_block_collision():
                 break
 
 def update_game_state():
-    global dx_ball_center, dx_ball_speed, dx_ball_radius, dx_bat, dx_ball_deviation, current_stage, dx_stages_dictionary, lives, game_over, dx_pattern_dictionary, fire_ball, magnetic_bat
+    global dx_ball_center, dx_ball_speed, dx_ball_radius, dx_bat, dx_ball_deviation, current_stage, dx_stages_dictionary, lives, game_over, dx_pattern_dictionary, fire_ball, magnetic_bat, unstoppable, bullets, game_win
     if fire_ball:
         dx_pattern_dictionary = dx_stages_dictionary[current_stage]
         if dx_ball_center[1] - dx_ball_radius <= 0:
@@ -403,6 +450,7 @@ def update_game_state():
         if dx_ball_center[1] + dx_ball_radius > W_Height or dx_ball_center[1] - dx_ball_radius < 0:
             dx_ball_speed = (dx_ball_speed[0], -dx_ball_speed[1])
 
+        # Collision with Block
         for coordinate, block_powerup in dx_pattern_dictionary.items():
             block, powerup = block_powerup
             
@@ -411,14 +459,15 @@ def update_game_state():
             if has_collided(block_box, {"x": dx_ball_center[0] - dx_ball_radius, "y": dx_ball_center[1] - dx_ball_radius, "width": 2*dx_ball_radius, "height": 2*dx_ball_radius}):
                 if block == "hollow":
                     dx_pattern_dictionary.pop(coordinate)
-                    if powerup:
-                        draw_powerup(powerup, coordinate[0], coordinate[1])
 
 
                 elif block == "solid":
                     dx_pattern_dictionary[coordinate] = ["hollow", None]
+                if powerup:
+                    draw_powerup(powerup, coordinate[0], coordinate[1])
 
-                dx_ball_speed = (dx_ball_speed[0], -dx_ball_speed[1])
+                if not unstoppable:
+                    dx_ball_speed = (dx_ball_speed[0], -dx_ball_speed[1])
                 break
 
         if len(dx_pattern_dictionary) == 0: 
@@ -427,8 +476,10 @@ def update_game_state():
                 current_stage += 1
             if next_stage in dx_stages_dictionary:
                 load_stage(next_stage)
-                dx_ball_center = (250, 30)
+                dx_ball_center = (dx_bat['x1'] + dx_bat['width'] // 2, dx_bat['y1'] + dx_bat['height'] + dx_ball_radius)
+                bullets = []
             else:
+                game_win = True
                 print("Congratulations! All stages completed!")
 
         
@@ -498,7 +549,77 @@ def specialKeyListener(key, x, y):
     glutPostRedisplay()
 
 def reset():
-    pass
+    global dx_bat, dx_ball_center, dx_ball_speed, dx_ball_radius, dx_pattern_dictionary, current_stage, lives, game_over, fire_ball, magnetic_bat, current_poweruplist, dx_stages_dictionary, bullets
+    
+
+
+    dx_bat['x1'] = 0
+    dx_ball_center = (dx_bat['x1'] + dx_bat['width'] // 2, dx_bat['y1'] + dx_bat['height'] + dx_ball_radius)
+    dx_ball_speed = (5, 5)
+    dx_ball_radius = 5
+    current_stage = 1
+    lives = 3
+    game_over = False
+    game_win = False
+    fire_ball = False
+    magnetic_bat = False
+    current_poweruplist = []
+    dx_stages_dictionary = {}
+    dx_pattern_dictionary = {}
+    for y in range(380, 321, -20):
+        for x in range(100, 351, 50):
+            rand_num = random.randint(0, int(1/solid_prob))
+
+            if rand_num == 0:
+                dx_pattern_dictionary[(x, y)] = ["solid", assign_powerup(powerup_prob)]
+            else:
+                dx_pattern_dictionary[(x, y)] = ["hollow", assign_powerup(powerup_prob)]
+    dx_stages_dictionary[1] = dx_pattern_dictionary
+
+
+    # Stage 2:
+    dx_pattern_dictionary = {}
+    pyramid_top = (225, 380)
+    pyramid_height = 5
+    for i in range(pyramid_height):
+        y = 380 - i*20
+        for x in range(pyramid_top[0] - i*50, pyramid_top[0] + i*50 + 1, 50):
+            rand_num = random.randint(0, int(1/solid_prob))
+            if rand_num == 0:
+                dx_pattern_dictionary[(x, y)] = ["solid", assign_powerup(powerup_prob)]
+            else:
+                dx_pattern_dictionary[(x, y)] = ["hollow", assign_powerup(powerup_prob)]
+
+
+    dx_stages_dictionary[2] = dx_pattern_dictionary
+
+        
+    # Stage 3:
+    dx_pattern_dictionary = {}
+    top = (225, 380)
+    bottom = (225, 260)
+    radius = 3
+    for i in range(radius+1):
+        y = 380 - i*20
+        for x in range(pyramid_top[0] - i*50, pyramid_top[0] + i*50 + 1, 50):
+            rand_num = random.randint(0, int(1/solid_prob))
+            if rand_num == 0:
+                dx_pattern_dictionary[(x, y)] = ["solid", assign_powerup(powerup_prob)]
+            else:
+                dx_pattern_dictionary[(x, y)] = ["hollow", assign_powerup(powerup_prob)]
+
+    for i in range(radius, -1, -1):
+        y = 240 + i*20
+        for x in range(pyramid_top[0] - i*50, pyramid_top[0] + i*50 + 1, 50):
+            rand_num = random.randint(0, int(1/solid_prob))
+            if rand_num == 0:
+                dx_pattern_dictionary[(x, y)] = ["solid", assign_powerup(powerup_prob)]
+            else:
+                dx_pattern_dictionary[(x, y)] = ["hollow", assign_powerup(powerup_prob)]        
+
+    dx_stages_dictionary[3] = dx_pattern_dictionary
+
+    bullets = []
 
 
 def mouseListener(button, state, x, y):
@@ -563,6 +684,23 @@ def draw_rectangle_block_filled(rectangle_block, color):
         for x in range(x1, x1 + width):
             draw_points(x, y, color)
 
+def draw_solid_block(rectangle_block, color):
+    x1 = rectangle_block['x1']
+    y1 = rectangle_block['y1']
+    width = rectangle_block['width']
+    height = rectangle_block['height']
+    x2, y2 = x1 + width, y1
+    x3, y3 = x1 + width, y1 + height
+    x4, y4 = x1, y1 + height
+
+    # for y in range(y1, y1 + height):
+    #     for x in range(x1, x1 + width):
+    #         draw_points(x, y, color)
+
+    eight_way_symmetry(x1, y1, x3, y3, color)
+    eight_way_symmetry(x4, y4, x2, y2, color)
+
+
 
 def draw_line(x1, y1, x2, y2, color):
     eight_way_symmetry(x1, y1, x2, y2, color)
@@ -578,7 +716,7 @@ def load_stage(stage_number):
 
 
 def showScreen():
-    global rectangle_block, dx_bat, dx_ball_center, dx_pattern_dictionary, current_stage, freeze, game_over
+    global rectangle_block, dx_bat, dx_ball_center, dx_pattern_dictionary, current_stage, freeze, game_over,  dx_ball_color, dx_bat_color
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glLoadIdentity()
     iterate()
@@ -593,16 +731,17 @@ def showScreen():
         if block_type == "hollow":
             draw_rectangle_block({"x1": coordinate[0], "y1": coordinate[1], 'width': 50, 'height': 20}, [1,1,1])
         elif block_type == "solid":
-            draw_rectangle_block_filled({"x1": coordinate[0], "y1": coordinate[1], 'width': 50, 'height': 20}, [1, 1, 1])
+            draw_rectangle_block({"x1": coordinate[0], "y1": coordinate[1], 'width': 50, 'height': 20}, [1, 1, 1])
+            draw_solid_block({"x1": coordinate[0], "y1": coordinate[1], 'width': 50, 'height': 20}, [1, 1, 1])
 
     for powerup in current_poweruplist:
         x, y, color, powerup_info = powerup
         midpoint_circle(7, color, (x, y))
     # draw bat
-    draw_rectangle_block(dx_bat, [1,1,1])
+    draw_rectangle_block(dx_bat, dx_bat_color)
 
     # draw ball
-    midpoint_circle(dx_ball_radius, [1,1,1], dx_ball_center)
+    midpoint_circle(dx_ball_radius, dx_ball_color, dx_ball_center)
 
     # STOP button
 
